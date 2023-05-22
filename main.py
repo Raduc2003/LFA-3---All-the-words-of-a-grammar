@@ -1,66 +1,68 @@
-def read_grammar_file(filename):
-    """
-    Read a regular grammar in CNF from a file.
-    """
-    grammar = {}
-    
-    with open(filename, 'r') as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            nonterminal, productions = line.split('->')
-            productions = [prod.split() if prod != 'lambda' else 'l' for prod in productions.split('|')]
-            productions = [list(p) if p !='l' else 'l' for prod in productions for p in prod]
-            grammar[nonterminal] = productions
-            
-    return grammar
+# Citim o gramatică și un număr n
+with open('grammar.txt') as f:
+    N = f.readline().split()  # neterminale
+    T = f.readline().split()  # terminale
+    P = int(f.readline())  # numărul de producții
+    S = f.readline().strip()  # simbolul de start
 
-grammar = read_grammar_file('LFA 3 - All the words of a grammar\grammar.txt')
-# grammar = {'S':[('a', 'A'), ('d', 'E')],'A':[('a', 'B'), ('a', 'S')], 'B':[('b', 'C')], 'C':[('b', 'D'), ('b', 'B')], 'D':[('c', 'D'),'l'], 'E':['l']}
+    D = {}  # construim un dicționar pentru a stoca producțiile
+    for i in range(P):
+        productie = f.readline().strip()
+        neterminal, derivari = productie.split(' -> ')
+        derivari = derivari.split(' | ')
 
-print(grammar)
+        if neterminal in D:
+            D[neterminal].extend(derivari)
+        else:
+            D[neterminal] = derivari
 
-def is_word_accepted(grammar, start_symbol, word):
-    if len(word) == 0 and 'l' in grammar[start_symbol]:
-        return True
-    
-    for rule in grammar[start_symbol]:
-        if len(rule) == 1 and isinstance(rule[0], str) and rule[0].islower():
-            if word and word[0] == rule[0]:
-                if len(word) == 1:
-                    return True
-                elif is_word_accepted(grammar, start_symbol, word[1:]):
-                    return True
-        elif word and word[0] == rule[0] and rule[0].islower():
-            if is_word_accepted(grammar, rule[1], word[1:]):
-                return True
-        elif rule[0].isupper():
-            if is_word_accepted(grammar, rule[0], rule[1]+word):
-                return True
-                    
-    return False
+# Păstrăm valorile subproblemelor rezolvate într-un dicționar în dicționar
+R = {x: {} for x in N}
 
+# Generăm cuvintele de lungime 0
+for x in N:
+    if '^' in D[x]:
+        R[x][0] = ['']
 
-def getAlphabet(grammar):
-    letters =set()
-    for letter in grammar.values():
-        for l in letter:
-            if l[0] != 'l':
-                letters.add(l[0])
-    return list(letters)
+# Citește n
+n = int(input("n?"))
 
-alphabet =getAlphabet(grammar)
+# Generăm cuvintele de lungime 1 până la n
+for l in range(1, n + 1):
+    for x in N:
+        for prod in D[x]:
+            terminale = True #verificam daca avem doar terminale in productie
+            if prod[len(prod) - 1] in N: #verificam daca ultimul simbol e terminal
+                terminale = False
+            if prod == '^':
+                prod = ''
 
-def generateWorld(grammar, word, n,alphabet):
-    if len(word) >= n:
-        if is_word_accepted(grammar, 'S', word):
-            print(word)
+            if terminale and len(prod) == l:
+                if l in R[x]:
+                    R[x][l].append(prod)
+                else:
+                    R[x][l] = [prod]
+            elif not terminale:
+                sim_term = prod[:-1]
+                simbol_urm = prod[-1]
+                lungime_ramasa = l - (len(prod) - 1)
+
+                if lungime_ramasa in R[simbol_urm]:
+                    if l not in R[x]:
+                        R[x][l] = []
+                    for cuv in R[simbol_urm][lungime_ramasa]:
+                        R[x][l].append(sim_term + cuv)
+
+# Afisam cuvintele generate de simbolul de start
+if n not in R[S]:
+    print("Nu exista cuvinte de lungime n")
+else:
+    if n != 0:
+        print("Putem genera urmatoarele cuvinte de lungime", n)
+        for cuv in R[S][n]:
+            if cuv == '':
+                print('^')
+            else:
+                print(cuv)
     else:
-        for letter in alphabet:
-            generateWorld(grammar,word + letter,n,alphabet)
-    return
-n= int(input('n=?'))
-
-# print(is_word_accepted(grammar,'S','aaaabbbbe'))
-generateWorld(grammar,'',n,alphabet)
+        print("Putem genera cuvantul vid: \n^")
